@@ -535,8 +535,13 @@ class User:
             'Referer': "https://www.zhihu.com/"
         }
         r = requests.get(self.user_url, headers=headers, verify=False)
+        # print "wolfblood debug : " + r.content
         soup = BeautifulSoup(r.content, "lxml")
         self.soup = soup
+        # wolfblood debug
+        fp = open("test.html",'a+')
+        fp.write(r.content)
+        fp.close()
 
     def get_user_id(self):
         if self.user_url == None:
@@ -562,7 +567,7 @@ class User:
                     return user_id.decode('utf-8').encode('gbk')
                 else:
                     return user_id
-                    
+
     def get_head_img_url(self, scale=4):
         """
             By liuwons (https://github.com/liuwons)
@@ -610,7 +615,7 @@ class User:
     def get_gender(self):
         """
             By Mukosame (https://github.com/mukosame)
-            (change by wolfblood 2017.3.20)
+            (Modified by wolfblood 2017.3.20)
             增加获取知乎识用户的性别
 
         """
@@ -632,6 +637,9 @@ class User:
                 return 'unknown'
 
     def get_followees_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -639,11 +647,14 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            followees_num = int(soup.find("div", class_="zm-profile-side-following zg-clear") \
-                                .find("a").strong.string)
+            followees_num = int(soup.find("div", class_="NumberBoard-value").string)
+
             return followees_num
 
     def get_followers_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -651,27 +662,30 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            followers_num = int(soup.find("div", class_="zm-profile-side-following zg-clear") \
-                                .find_all("a")[1].strong.string)
+            followers_num = int(soup.find_all("div", class_="NumberBoard-value")[1].string)
+
             return followers_num
 
-    def get_topics_num(self):
-        if self.user_url == None:
-            print "I'm anonymous user."
-            return 0
-        else:
-            if self.soup == None:
-                self.parser()
-            soup = self.soup
-            topics_num = soup.find_all("div", class_="zm-profile-side-section-title")[-1].strong.string.encode("utf-8")
-            I=''
-            for i in topics_num:
-                if i.isdigit():
-                    I=I+i
-            topics_num=int(I)
-            return topics_num       
+    # def get_topics_num(self):
+    #     if self.user_url == None:
+    #         print "I'm anonymous user."
+    #         return 0
+    #     else:
+    #         if self.soup == None:
+    #             self.parser()
+    #         soup = self.soup
+    #         topics_num = soup.find_all("div", class_="zm-profile-side-section-title")[-1].strong.string.encode("utf-8")
+    #         I=''
+    #         for i in topics_num:
+    #             if i.isdigit():
+    #                 I=I+i
+    #         topics_num=int(I)
+    #         return topics_num       
 
     def get_agree_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -679,10 +693,22 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            agree_num = int(soup.find("span", class_="zm-profile-header-user-agree").strong.string)
+            agree_num = ''
+            div_right = [i.text for i in soup.find_all("div", class_="IconGraf")]
+            for i in div_right:
+                if u"赞同" in i:
+                    agree_num = i
+            I=''
+            for i in agree_num:
+                if i.isdigit():
+                    I = I + i
+            agree_num = int(I)
             return agree_num
 
     def get_thanks_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -690,10 +716,22 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            thanks_num = int(soup.find("span", class_="zm-profile-header-user-thanks").strong.string)
+            div_right = soup.find("div", class_="Profile-sideColumnItemValue").text
+            div_right = div_right.replace(' ', '') # 去除所有的空格，便于抽取数字
+            thanks_num = 0
+            re_thanks = re.compile(u".*[^0-9]([0-9]+)次感谢.*")
+            m = re_thanks.match(div_right)
+            if m:
+                # print m.group(1)
+                # print m.group(0)
+                thanks_num = int(m.group(1))
             return thanks_num
 
-    def get_asks_num(self):
+    def get_collected_num(self):
+        '''
+        Created by wolfblood 17.3.20
+        被收藏次数
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -701,10 +739,38 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            asks_num = int(soup.find_all("span", class_="num")[0].string)
+            div_right = soup.find("div", class_="Profile-sideColumnItemValue").text
+            div_right = div_right.replace(' ', '') # 去除所有的空格，便于抽取数字
+
+            collected_num = 0
+            re_collected = re.compile(u".*[^0-9]([0-9]+)次收藏.*")
+            m = re_collected.match(div_right)
+            if m:
+                # print m.group(1)
+                # print m.group(0)
+                collected_num = int(m.group(1))
+            return collected_num
+
+    def get_asks_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
+        if self.user_url == None:
+            print "I'm anonymous user."
+            return 0
+        else:
+            if self.soup == None:
+                self.parser()
+            soup = self.soup
+
+            asks_num = int(soup.find("li", attrs={"aria-controls":"Profile-asks"}).find(
+                "span", class_="Tabs-meta").string)
             return asks_num
 
     def get_answers_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -712,10 +778,14 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            answers_num = int(soup.find_all("span", class_="num")[1].string)
+            answers_num = int(soup.find("li", attrs={"aria-controls":"Profile-answers"}).find(
+                "span", class_="Tabs-meta").string)
             return answers_num
 
     def get_collections_num(self):
+        '''
+        Modified by wolfblood 17.3.20
+        '''
         if self.user_url == None:
             print "I'm anonymous user."
             return 0
@@ -723,8 +793,25 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            collections_num = int(soup.find_all("span", class_="num")[3].string)
+            collections_num = int(soup.find("li", attrs={"aria-controls":"Profile-collections"}).find(
+                "span", class_="Tabs-meta").string)
             return collections_num
+    
+    def get_shares_num(self):
+        '''
+        Created by wolfblood 17.3.20
+        分享次数
+        '''
+        if self.user_url == None:
+            print "I'm anonymous user."
+            return 0
+        else:
+            if self.soup == None:
+                self.parser()
+            soup = self.soup
+            shares_num = int(soup.find("li", attrs={"aria-controls":"Profile-posts"}).find(
+                "span", class_="Tabs-meta").string)
+            return shares_num
 
     def get_followees(self):
         if self.user_url == None:
@@ -1327,135 +1414,3 @@ class Answer:
 
 
 class Collection:
-    url = None
-    # session = None
-    soup = None
-
-    def __init__(self, url, name=None, creator=None):
-
-        #if url[0:len(url) - 8] != "https://www.zhihu.com/collection/":
-        if not re.compile(r"(http|https)://www.zhihu.com/collection/\d{8}").match(url):
-            raise ValueError("\"" + url + "\"" + " : it isn't a collection url.")
-        else:
-            self.url = url
-            # print 'collection url',url
-            if name != None:
-                self.name = name
-            if creator != None:
-                self.creator = creator
-    def parser(self):
-        headers = {
-            'User-Agent': "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36",
-            'Host': "www.zhihu.com",
-            'Origin': "https://www.zhihu.com",
-            'Pragma': "no-cache",
-            'Referer': "https://www.zhihu.com/"
-        }
-        r = requests.get(self.url, headers=headers, verify=False)
-        soup = BeautifulSoup(r.content, "lxml")
-        self.soup = soup
-
-    def get_name(self):
-        if hasattr(self, 'name'):
-            if platform.system() == 'Windows':
-                return self.name.decode('utf-8').encode('gbk')
-            else:
-                return self.name
-        else:
-            if self.soup == None:
-                self.parser()
-            soup = self.soup
-            self.name = soup.find("h2", id="zh-fav-head-title").string.encode("utf-8").strip()
-            if platform.system() == 'Windows':
-                return self.name.decode('utf-8').encode('gbk')
-            return self.name
-
-    def get_creator(self):
-        if hasattr(self, 'creator'):
-            return self.creator
-        else:
-            if self.soup == None:
-                self.parser()
-            soup = self.soup
-            creator_id = soup.find("h2", class_="zm-list-content-title").a.string.encode("utf-8")
-            creator_url = "https://www.zhihu.com" + soup.find("h2", class_="zm-list-content-title").a["href"]
-            creator = User(creator_url, creator_id)
-            self.creator = creator
-            return creator
-
-    def get_all_answers(self):
-        if self.soup == None:
-            self.parser()
-        soup = self.soup
-        answer_list = soup.find_all("div", class_="zm-item")
-        if len(answer_list) == 0:
-            print "the collection is empty."
-            return
-            yield
-        else:
-            question_url = None
-            question_title = None
-            for answer in answer_list:
-                if not answer.find("p", class_="note"):
-                    question_link = answer.find("h2")
-                    if question_link != None:
-                        question_url = "https://www.zhihu.com" + question_link.a["href"]
-                        question_title = question_link.a.string.encode("utf-8")
-                    question = Question(question_url, question_title)
-                    answer_url = "https://www.zhihu.com" + answer.find("span", class_="answer-date-link-wrap").a["href"]
-                    author = None
-
-                    if answer.find("div", class_="zm-item-answer-author-info").get_text(strip='\n') == u"匿名用户":
-                        author_url = None
-                        author = User(author_url)
-                    else:
-                        author_tag = answer.find("div", class_="zm-item-answer-author-info").find_all("a")[0]
-                        author_id = author_tag.string.encode("utf-8")
-                        author_url = "https://www.zhihu.com" + author_tag["href"]
-                        author = User(author_url, author_id)
-                    yield Answer(answer_url, question, author)
-            i = 2
-            while True:
-                headers = {
-                    'User-Agent': "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36",
-                    'Host': "www.zhihu.com",
-                    'Origin': "https://www.zhihu.com",
-                    'Pragma': "no-cache",
-                    'Referer': "https://www.zhihu.com/"
-                }
-                r = requests.get(self.url + "?page=" + str(i), headers=headers, verify=False)
-                answer_soup = BeautifulSoup(r.content, "lxml")
-                answer_list = answer_soup.find_all("div", class_="zm-item")
-                if len(answer_list) == 0:
-                    break
-                else:
-                    for answer in answer_list:
-                        if not answer.find("p", class_="note"):
-                            question_link = answer.find("h2")
-                            if question_link != None:
-                                question_url = "https://www.zhihu.com" + question_link.a["href"]
-                                question_title = question_link.a.string.encode("utf-8")
-                            question = Question(question_url, question_title)
-                            answer_url = "https://www.zhihu.com" + answer.find("span", class_="answer-date-link-wrap").a[
-                                "href"]
-                            author = None
-                            if answer.find("div", class_="zm-item-answer-author-info").get_text(strip='\n') == u"匿名用户":
-                                # author_id = "匿名用户"
-                                author_url = None
-                                author = User(author_url)
-                            else:
-                                author_tag = answer.find("div", class_="zm-item-answer-author-info").find_all("a")[0]
-                                author_id = author_tag.string.encode("utf-8")
-                                author_url = "https://www.zhihu.com" + author_tag["href"]
-                                author = User(author_url, author_id)
-                            yield Answer(answer_url, question, author)
-                i = i + 1
-
-    def get_top_i_answers(self, n):
-        j = 0
-        answers = self.get_all_answers()
-        for answer in answers:
-            j = j + 1
-            if j > n:
-                break
-            yield answer
