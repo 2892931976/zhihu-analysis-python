@@ -562,20 +562,22 @@ class User:
                     return user_id.decode('utf-8').encode('gbk')
                 else:
                     return user_id
-
+                    
     def get_head_img_url(self, scale=4):
         """
             By liuwons (https://github.com/liuwons)
+            
+            (此处较原始函数更改了参数的含义 by wolfblood 2017.3.20)
             增加获取知乎识用户的头像url
             scale对应的头像尺寸:
                 1 - 25×25
-                3 - 75×75
-                4 - 100×100
-                6 - 150×150
-                10 - 250×250
+                2 - 75×75
+                3 - 100×100
+                4 - 200×200
+                5 - 400×400
         """
-        scale_list = [1, 3, 4, 6, 10]
-        scale_name = '0s0ml0t000b'
+        scale_list = [1, 2, 3, 4, 5]        
+        scale_name = ['s','xs','l','xl','xll']
         if self.user_url == None:
             print "I'm anonymous user."
             return None
@@ -586,8 +588,8 @@ class User:
             if self.soup == None:
                 self.parser()
             soup = self.soup
-            url = soup.find("img", class_="Avatar Avatar--l")["src"]
-            return url[:-5] + scale_name[scale] + url[-4:]
+            url = soup.find("img", class_="UserAvatar-inner")["src"]
+            return url[:-6] + scale_name[scale-1] + url[-4:]
 
     def get_data_id(self):
         """
@@ -608,6 +610,7 @@ class User:
     def get_gender(self):
         """
             By Mukosame (https://github.com/mukosame)
+            (change by wolfblood 2017.3.20)
             增加获取知乎识用户的性别
 
         """
@@ -619,11 +622,12 @@ class User:
                 self.parser()
             soup = self.soup
             try:
-                gender = str(soup.find("span",class_="item gender").i)
-                if (gender == '<i class="icon icon-profile-female"></i>'):
+                if soup.find("svg",class_="Icon--male"):
+                    return 'male'
+                elif soup.find("svg",class_="Icon--female"):
                     return 'female'
                 else:
-                    return 'male'
+                    return 'unknown'
             except:
                 return 'unknown'
 
